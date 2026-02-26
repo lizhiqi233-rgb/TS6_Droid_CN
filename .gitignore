@@ -12,6 +12,10 @@ gradle.properties
 # Native libs (built from tslib)
 app/src/main/jniLibs/
 
+# Signing
+*.keystore
+*.jks
+
 # OS
 .DS_Store
 Thumbs.db
