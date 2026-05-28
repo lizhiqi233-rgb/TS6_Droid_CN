@@ -17,7 +17,7 @@
     <string name="default_channel">默认频道</string>
     <string name="browse_channels">浏览频道</string>
     <string name="connecting">正在连接…</string>
-    <string name="connect">仅连接</string>
+    <string name="connect">连接</string>
     <string name="add_bookmark">添加服务器</string>
     <string name="edit_bookmark">编辑服务器</string>
     <string name="save">保存</string>
