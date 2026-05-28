@@ -4,7 +4,7 @@
     <string name="app_name">TS6 Droid</string>
     <string name="language_simplified_chinese">简体中文</string>
     <string name="language_english">English</string>
-    <string name="language_french">法语</string>
+    <string name="language_french">Français</string>
     <string name="channel_connection">连接</string>
     <string name="channel_connection_desc">服务器连接通知</string>
 
@@ -17,12 +17,12 @@
     <string name="default_channel">默认频道</string>
     <string name="browse_channels">浏览频道</string>
     <string name="connecting">正在连接…</string>
-    <string name="connect">连接</string>
-    <string name="add_bookmark">添加书签</string>
-    <string name="edit_bookmark">编辑书签</string>
+    <string name="connect">仅连接</string>
+    <string name="add_bookmark">添加服务器</string>
+    <string name="edit_bookmark">编辑服务器</string>
     <string name="save">保存</string>
-    <string name="bookmarks">书签</string>
-    <string name="no_bookmarks">暂无书签</string>
+    <string name="bookmarks">服务器</string>
+    <string name="no_bookmarks">暂无服务器</string>
     <string name="manual_connection">手动连接</string>
     <string name="auto_reconnect">自动重连</string>
     <string name="remove">移除</string>

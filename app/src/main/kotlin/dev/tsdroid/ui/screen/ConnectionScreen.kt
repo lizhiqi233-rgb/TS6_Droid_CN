@@ -51,6 +51,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import android.content.Context
+import android.os.LocaleList
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -71,6 +74,16 @@ import dev.tslib.ConnectionState
 import dev.tsdroid.ui.component.ChannelTree
 import dev.tsdroid.viewmodel.ConnectionViewModel
 import kotlinx.coroutines.launch
+
+private fun updateAppLocale(context: Context, languageTag: String) {
+    val locale = java.util.Locale.forLanguageTag(languageTag)
+    java.util.Locale.setDefault(locale)
+    val resources = context.resources
+    val config = resources.configuration
+    config.setLocale(locale)
+    config.setLocales(LocaleList(locale))
+    resources.updateConfiguration(config, resources.displayMetrics)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,14 +111,18 @@ fun ConnectionScreen(
     val scope = rememberCoroutineScope()
 
     val isConnecting = connectionState == ConnectionState.CONNECTING
-    val defaultLanguage = stringResource(R.string.language_simplified_chinese)
-    var selectedLanguage by rememberSaveable { mutableStateOf(defaultLanguage) }
-    var languageMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? androidx.activity.ComponentActivity
     val languageOptions = listOf(
-        stringResource(R.string.language_simplified_chinese),
-        stringResource(R.string.language_english),
-        stringResource(R.string.language_french),
+        "zh" to stringResource(R.string.language_simplified_chinese),
+        "en" to stringResource(R.string.language_english),
+        "fr" to stringResource(R.string.language_french),
     )
+    val defaultLanguageTag = languageOptions[0].first
+    val defaultLanguageLabel = languageOptions[0].second
+    var selectedLanguage by rememberSaveable { mutableStateOf(defaultLanguageLabel) }
+    var selectedLanguageTag by rememberSaveable { mutableStateOf(defaultLanguageTag) }
+    var languageMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Request permissions
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -147,11 +164,14 @@ fun ConnectionScreen(
                             expanded = languageMenuExpanded,
                             onDismissRequest = { languageMenuExpanded = false },
                         ) {
-                            languageOptions.forEach { language ->
+                            languageOptions.forEach { (languageTag, languageLabel) ->
                                 DropdownMenuItem(
-                                    text = { Text(language) },
+                                    text = { Text(languageLabel) },
                                     onClick = {
-                                        selectedLanguage = language
+                                        selectedLanguage = languageLabel
+                                        selectedLanguageTag = languageTag
+                                        updateAppLocale(context, languageTag)
+                                        activity?.recreate()
                                         languageMenuExpanded = false
                                     },
                                 )
