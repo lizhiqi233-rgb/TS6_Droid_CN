@@ -1,4 +1,4 @@
-# TS6 Droid 简体中文增强版
+# TS6 Droid 简中版
 
 基于原作者 [flamme-demon/TS6_Droid](https://github.com/flamme-demon/TS6_Droid) 的开源项目进行汉化与功能增强的 Android 客户端。
 
