@@ -26,6 +26,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.coroutineContext
@@ -71,6 +73,7 @@ class TsClient {
 
     private var eventLoopJob: Job? = null
     private val clientCoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val connectMutex = Mutex()
 
     val isConnected: Boolean
         get() = client?.isConnected == true
@@ -85,36 +88,39 @@ class TsClient {
         password: String? = null,
         channel: String? = null,
     ) = withContext(Dispatchers.IO) {
-        try {
-            // Phase 1: Pure physical reset of old client tokens
-            stopEventLoop()
-            disconnect()
-            
-            // Phase 2: Start new handshake after a safe 300ms propagation delay
-            delay(300)
-            
-            serverAddress = address
-            val c = Client(address, identity, nickname, password, channel)
-            client = c
-            _state.value = ConnectionState.CONNECTING
-            c.waitConnected()
-            _state.value = ConnectionState.CONNECTED
-            // Log immediately after waitConnected
-            val users = c.users
-            val channels = c.channels
-            Log.i(TAG, "After waitConnected: ${users?.size ?: "null"} users, ${channels?.size ?: "null"} channels")
-            if (users != null) {
-                for (u in users) {
-                    if (u != null) Log.d(TAG, "  User: ${u.nickname} (id=${u.id}, ch=${u.channelId})")
+        connectMutex.withLock {
+            try {
+                // Phase 1: Pure physical reset of old client tokens
+                stopEventLoop()
+                disconnect()
+                
+                // Phase 2: Start new handshake after a safe 300ms propagation delay
+                delay(300)
+                
+                serverAddress = address
+                val c = Client(address, identity, nickname, password, channel)
+                client = c
+                _state.value = ConnectionState.CONNECTING
+                c.waitConnected()
+                _state.value = ConnectionState.CONNECTED
+                // Log immediately after waitConnected
+                val users = c.users
+                val channels = c.channels
+                Log.i(TAG, "After waitConnected: ${users?.size ?: "null"} users, ${channels?.size ?: "null"} channels")
+                if (users != null) {
+                    for (u in users) {
+                        if (u != null) Log.d(TAG, "  User: ${u.nickname} (id=${u.id}, ch=${u.channelId})")
+                    }
                 }
+                refreshState()
+            } catch (e: Throwable) {
+                Log.e("TS6_CRASH_PREVENTION", "Aggressively blocking AppCustomException", e)
+                _state.value = ConnectionState.DISCONNECTED
+                _commandErrors.tryEmit("服务器连接 busy，正在排队重试...")
+                // In order to properly stop TsConnectionService from proceeding to start audioBridge/eventLoop
+                // and crashing the app in subsequent steps, we MUST throw an exception back to the caller.
+                throw Exception("Connection failed: ${e.message ?: "Server busy or rejected"}", e)
             }
-            refreshState()
-        } catch (e: Exception) {
-            Log.e("TS6_CRASH_PREVENTION", "Aggressively blocking AppCustomException", e)
-            _state.value = ConnectionState.DISCONNECTED
-            _commandErrors.tryEmit("服务器连接 busy，正在排队重试...")
-            // Silently bridge the UI state instead of dying
-            // Do NOT throw e here to prevent JE_AppCustomException from crashing the app
         }
     }
 
