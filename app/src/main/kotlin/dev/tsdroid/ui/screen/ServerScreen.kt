@@ -74,7 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import dev.tslib.ConnectionState
 import dev.tslib.User
 import dev.tsdroid.ui.component.ChannelTree

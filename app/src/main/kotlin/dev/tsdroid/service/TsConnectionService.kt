@@ -50,7 +50,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.tsdroid.MainActivity
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import dev.tsdroid.TsDroidApp
 import dev.tsdroid.bridge.AudioBridge
 import dev.tsdroid.bridge.AvatarCache

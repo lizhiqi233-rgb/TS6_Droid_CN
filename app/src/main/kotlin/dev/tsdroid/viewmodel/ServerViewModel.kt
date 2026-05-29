@@ -23,7 +23,7 @@ import dev.tsdroid.bridge.FileCache
 import dev.tsdroid.bridge.IconCache
 import dev.tsdroid.bridge.TsClient
 import dev.tsdroid.bridge.TsFileEntry
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import dev.tsdroid.data.BookmarkStore
 import dev.tsdroid.data.MessageStore
 import dev.tsdroid.data.SettingsStore

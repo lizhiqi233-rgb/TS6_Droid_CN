@@ -53,7 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import android.webkit.MimeTypeMap
 import androidx.compose.ui.unit.dp
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import coil.compose.AsyncImage
 import dev.tslib.BBCode
 import dev.tsdroid.viewmodel.ChatMessage

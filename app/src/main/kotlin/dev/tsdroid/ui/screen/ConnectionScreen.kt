@@ -69,7 +69,7 @@ import dev.tsdroid.data.SettingsStore
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import dev.tslib.ConnectionState
 import dev.tsdroid.ui.component.ChannelTree
 import dev.tsdroid.viewmodel.ConnectionViewModel

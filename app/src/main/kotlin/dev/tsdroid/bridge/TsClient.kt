@@ -117,6 +117,18 @@ class TsClient {
                 Log.e("TS6_CRASH_PREVENTION", "Aggressively blocking AppCustomException", e)
                 _state.value = ConnectionState.DISCONNECTED
                 _commandErrors.tryEmit("服务器连接 busy，正在排队重试...")
+                
+                // CRITICAL FIX FOR CRASH: If waitConnected fails (e.g. server rejects connection because of swift reconnect), 
+                // the client pointer is left in a broken state. 
+                // Discard it safely without trying to send disconnect packets or flush network events (which causes SIGSEGV).
+                val failedClient = client
+                client = null
+                if (failedClient != null) {
+                    try {
+                        failedClient.close() // Safe memory free instead of .disconnect()
+                    } catch (_: Exception) {}
+                }
+                
                 // In order to properly stop TsConnectionService from proceeding to start audioBridge/eventLoop
                 // and crashing the app in subsequent steps, we MUST throw an exception back to the caller.
                 throw Exception("Connection failed: ${e.message ?: "Server busy or rejected"}", e)

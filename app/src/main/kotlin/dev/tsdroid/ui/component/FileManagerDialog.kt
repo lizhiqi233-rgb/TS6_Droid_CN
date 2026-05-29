@@ -56,7 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.tsdroid.R
+import dev.tsdroid.han.R
 import dev.tsdroid.bridge.TsFileEntry
 import dev.tslib.Channel
 import dev.tslib.User
