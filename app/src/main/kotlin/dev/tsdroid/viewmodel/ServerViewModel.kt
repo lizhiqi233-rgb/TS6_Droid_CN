@@ -100,6 +100,9 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     private val _talkingUserIds = MutableStateFlow<Set<Int>>(emptySet())
     val talkingUserIds: StateFlow<Set<Int>> = _talkingUserIds.asStateFlow()
 
+    private val _mutedUserIds = MutableStateFlow<Set<Int>>(emptySet())
+    val mutedUserIds: StateFlow<Set<Int>> = _mutedUserIds.asStateFlow()
+
     // Users with isTalking patched from talk status events
     private val _users = MutableStateFlow<List<User>>(emptyList())
     val users: StateFlow<List<User>> = _users.asStateFlow()
@@ -219,6 +222,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 val binder = service as TsConnectionService.LocalBinder
                 tsClient = binder.tsClient
                 audioBridge = binder.audioBridge
+                audioBridge?.setMutedUserIds(_mutedUserIds.value)
                 connectionService = binder.service
                 queriedPermChannels.clear()
 
@@ -507,6 +511,16 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         _isPttMode.value = newPttMode
         // When switching to PTT mode, mute. When switching to VA, unmute.
         audioBridge?.setMuted(newPttMode)
+    }
+
+    fun toggleMuteUser(clientId: Int) {
+        val updated = if (clientId in _mutedUserIds.value) {
+            _mutedUserIds.value - clientId
+        } else {
+            _mutedUserIds.value + clientId
+        }
+        _mutedUserIds.value = updated
+        audioBridge?.setMutedUserIds(updated)
     }
 
     fun setPushToTalk(pressed: Boolean) {

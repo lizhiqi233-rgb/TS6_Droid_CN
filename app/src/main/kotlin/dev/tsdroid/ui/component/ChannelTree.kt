@@ -3,12 +3,14 @@ package dev.tsdroid.ui.component
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,6 +42,8 @@ fun ChannelTree(
     users: List<User>,
     onChannelClick: (Long) -> Unit,
     onUserClick: ((User) -> Unit)? = null,
+    onUserLongClick: ((User) -> Unit)? = null,
+    mutedUserIds: Set<Int> = emptySet(),
     channelIcons: Map<Long, ImageBitmap> = emptyMap(),
     userAvatars: Map<String, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
@@ -74,13 +78,10 @@ fun ChannelTree(
                 is TreeItem.UserNode -> UserItem(
                     user = item.user,
                     avatar = item.user.uid?.let { userAvatars[it] },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (onUserClick != null) Modifier.clickable { onUserClick(item.user) }
-                            else Modifier
-                        )
-                        .padding(start = (item.depth * 24 + 32).dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = (item.depth * 24 + 32).dp),
+                    onClick = onUserClick?.let { { it(item.user) } },
+                    onToggleMute = onUserLongClick?.let { { it(item.user) } },
+                    isLocallyMuted = item.user.id in mutedUserIds,
                 )
             }
         }

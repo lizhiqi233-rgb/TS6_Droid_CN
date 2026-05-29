@@ -64,6 +64,9 @@ class AudioBridge(
     @Volatile
     var gainFactor: Float = 1.0f
 
+    @Volatile
+    private var mutedUserIds: Set<Int> = emptySet()
+
     private val _isMuted = MutableStateFlow(true) // Start muted (PTT default)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
@@ -204,7 +207,12 @@ class AudioBridge(
      * Queue an opus packet for a specific user. Called from any thread;
      * decoding happens on the playback thread.
      */
+    fun setMutedUserIds(userIds: Set<Int>) {
+        mutedUserIds = userIds
+    }
+
     fun playAudio(userId: Int, opusData: ByteArray) {
+        if (userId in mutedUserIds) return
         val queue = userQueues.getOrPut(userId) { ArrayDeque() }
         synchronized(queue) {
             if (queue.size < MAX_QUEUE_FRAMES) {

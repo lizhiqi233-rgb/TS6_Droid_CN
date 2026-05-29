@@ -8,6 +8,9 @@
     <string name="language_change_title">应用语言更改</string>
     <string name="language_change_message">需要重启应用以应用 %1$s。</string>
     <string name="restart">重启</string>
+    <string name="mute_user">静音用户</string>
+    <string name="unmute_user">取消静音用户</string>
+    <string name="user_muted">已静音</string>
     <string name="channel_connection">连接</string>
     <string name="channel_connection_desc">服务器连接通知</string>
 

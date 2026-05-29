@@ -7,6 +7,9 @@
     <string name="language_change_title">Apply language change?</string>
     <string name="language_change_message">The app needs to restart to apply %1$s.</string>
     <string name="restart">Restart</string>
+    <string name="mute_user">Mute user</string>
+    <string name="unmute_user">Unmute user</string>
+    <string name="user_muted">Muted</string>
 
     <!-- ConnectionScreen -->
     <string name="server_address">Server address</string>

@@ -107,6 +107,7 @@ fun ServerScreen(
     val audioGain by viewModel.audioGain.collectAsState()
     val showLinkThumbnails by viewModel.showLinkThumbnails.collectAsState()
     val autoLoadImages by viewModel.autoLoadImages.collectAsState()
+    val mutedUserIds by viewModel.mutedUserIds.collectAsState()
     val fileManagerOpen by viewModel.fileManagerOpen.collectAsState()
     val fileList by viewModel.fileList.collectAsState()
     val currentFilePath by viewModel.currentFilePath.collectAsState()
@@ -313,6 +314,8 @@ fun ServerScreen(
                     chatTab = 1
                     chatOpen = true
                 },
+                onUserLongClick = { user -> viewModel.toggleMuteUser(user.id) },
+                mutedUserIds = mutedUserIds,
                 channelIcons = channelIcons,
                 userAvatars = userAvatars,
                 modifier = Modifier

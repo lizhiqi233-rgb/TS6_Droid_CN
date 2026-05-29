@@ -8,6 +8,9 @@
     <string name="language_change_title">Appliquer la modification de langue ?</string>
     <string name="language_change_message">L’application doit redémarrer pour appliquer %1$s.</string>
     <string name="restart">Redémarrer</string>
+    <string name="mute_user">Mute user</string>
+    <string name="unmute_user">Unmute user</string>
+    <string name="user_muted">Muted</string>
     <string name="channel_connection">Connection</string>
     <string name="channel_connection_desc">Notification de connexion au serveur</string>
 

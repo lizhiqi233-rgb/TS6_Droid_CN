@@ -3,12 +3,17 @@ package dev.tsdroid.ui.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -40,50 +45,88 @@ fun UserItem(
     user: User,
     avatar: ImageBitmap? = null,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onToggleMute: (() -> Unit)? = null,
+    isLocallyMuted: Boolean = false,
 ) {
-    Row(
-        modifier = modifier
-            .padding(vertical = 3.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AvatarWithRing(
-            avatar = avatar,
-            nickname = user.nickname,
-            isTalking = user.isTalking,
-            isRecording = user.isRecording,
-            isInputMuted = user.isInputMuted || !user.hasInputHardware,
-            isOutputMuted = user.isOutputMuted,
-        )
-
-        Spacer(Modifier.width(8.dp))
-
-        Text(
-            text = user.nickname,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(1f),
-            color = when {
-                user.isTalking -> MaterialTheme.colorScheme.primary
-                user.isAway -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> MaterialTheme.colorScheme.onSurface
-            },
-        )
-
-        // Detail status icons on the right
-        if (user.isRecording) {
-            Icon(
-                Icons.Default.RadioButtonChecked,
-                contentDescription = stringResource(R.string.status_recording),
-                modifier = Modifier.size(14.dp),
-                tint = Color(0xFFF44336),
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { onClick?.invoke() },
+                    onLongClick = if (onToggleMute != null) { { menuExpanded = true } } else null,
+                )
+                .padding(vertical = 3.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AvatarWithRing(
+                avatar = avatar,
+                nickname = user.nickname,
+                isTalking = user.isTalking,
+                isRecording = user.isRecording,
+                isInputMuted = user.isInputMuted || !user.hasInputHardware,
+                isOutputMuted = user.isOutputMuted,
             )
-            Spacer(Modifier.width(2.dp))
+
+            Spacer(Modifier.width(8.dp))
+
+            Text(
+                text = user.nickname,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+                color = when {
+                    user.isTalking -> MaterialTheme.colorScheme.primary
+                    user.isAway -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            )
+
+            // Detail status icons on the right
+            if (user.isRecording) {
+                Icon(
+                    Icons.Default.RadioButtonChecked,
+                    contentDescription = stringResource(R.string.status_recording),
+                    modifier = Modifier.size(14.dp),
+                    tint = Color(0xFFF44336),
+                )
+                Spacer(Modifier.width(2.dp))
+            }
+            if (user.isAway) {
+                Icon(
+                    Icons.Default.NightsStay,
+                    contentDescription = stringResource(R.string.status_away),
+                    modifier = Modifier.size(14.dp),
+                    tint = Color(0xFFFF9800),
+                )
+                Spacer(Modifier.width(2.dp))
+            }
+            if (isLocallyMuted) {
+                Icon(
+                    Icons.AutoMirrored.Filled.VolumeOff,
+                    contentDescription = stringResource(R.string.user_muted),
+                    modifier = Modifier.size(14.dp),
+                    tint = Color(0xFFFF9800),
+                )
+                Spacer(Modifier.width(2.dp))
+            }
         }
-        if (user.isAway) {
-            Icon(
-                Icons.Default.NightsStay,
-                contentDescription = stringResource(R.string.status_away),
-                modifier = Modifier.size(14.dp),
-                tint = Color(0xFFFF9800),
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (isLocallyMuted) stringResource(R.string.unmute_user)
+                        else stringResource(R.string.mute_user)
+                    )
+                },
+                onClick = {
+                    onToggleMute?.invoke()
+                    menuExpanded = false
+                },
             )
         }
     }
