@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.BitmapFactory
 import android.os.IBinder
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
@@ -34,9 +35,6 @@ import java.io.File
 class ConnectionViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val TAG = "ConnectionViewModel"
-    }
-
-    companion object {
         /** Survit aux recréations du ViewModel dans le même processus. */
         private var autoReconnectAttempted = false
     }
