@@ -70,6 +70,9 @@ class AudioBridge(
     private val _isMuted = MutableStateFlow(true) // Start muted (PTT default)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
+    private val _isOutputMuted = MutableStateFlow(false)
+    val isOutputMuted: StateFlow<Boolean> = _isOutputMuted.asStateFlow()
+
     private val _isCapturing = MutableStateFlow(false)
     val isCapturing: StateFlow<Boolean> = _isCapturing.asStateFlow()
 
@@ -213,6 +216,7 @@ class AudioBridge(
 
     fun playAudio(userId: Int, opusData: ByteArray) {
         if (userId in mutedUserIds) return
+        if (_isOutputMuted.value) return // Global output mute — discard incoming audio
         val queue = userQueues.getOrPut(userId) { ArrayDeque() }
         synchronized(queue) {
             if (queue.size < MAX_QUEUE_FRAMES) {
@@ -231,6 +235,20 @@ class AudioBridge(
         val newState = !_isMuted.value
         _isMuted.value = newState
         tsClient.setInputMuted(newState)
+    }
+
+    fun setOutputMuted(muted: Boolean) {
+        _isOutputMuted.value = muted
+        // When output is muted, clear all queued audio so nothing plays
+        if (muted) {
+            for ((_, queue) in userQueues) {
+                synchronized(queue) { queue.clear() }
+            }
+        }
+    }
+
+    fun toggleOutputMute() {
+        setOutputMuted(!_isOutputMuted.value)
     }
 
     fun release() {
