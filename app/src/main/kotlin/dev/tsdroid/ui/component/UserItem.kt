@@ -45,7 +45,9 @@ import kotlin.math.absoluteValue
 import dev.tsdroid.han.R
 import dev.tslib.User
 
-@OptIn(ExperimentalFoundationApi::class)
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.IconButton
+
 @Composable
 fun UserItem(
     user: User,
@@ -55,15 +57,11 @@ fun UserItem(
     onToggleMute: (() -> Unit)? = null,
     isLocallyMuted: Boolean = false,
 ) {
-    var menuExpanded by rememberSaveable { mutableStateOf(false) }
     Box(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .combinedClickable(
-                    onClick = { onClick?.invoke() },
-                    onLongClick = if (onToggleMute != null) { { menuExpanded = true } } else null,
-                )
+                .clickable { onClick?.invoke() }
                 .padding(vertical = 3.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -108,7 +106,21 @@ fun UserItem(
                 )
                 Spacer(Modifier.width(2.dp))
             }
-            if (isLocallyMuted) {
+            
+            // Inline mute toggle button instead of long press menu
+            if (onToggleMute != null) {
+                IconButton(
+                    onClick = onToggleMute,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        if (isLocallyMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.Default.MicOff,
+                        contentDescription = stringResource(if (isLocallyMuted) R.string.unmute_user else R.string.mute_user),
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isLocallyMuted) Color(0xFFFF9800) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+                }
+            } else if (isLocallyMuted) {
                 Icon(
                     Icons.AutoMirrored.Filled.VolumeOff,
                     contentDescription = stringResource(R.string.user_muted),
@@ -117,23 +129,6 @@ fun UserItem(
                 )
                 Spacer(Modifier.width(2.dp))
             }
-        }
-        DropdownMenu(
-            expanded = menuExpanded,
-            onDismissRequest = { menuExpanded = false },
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        if (isLocallyMuted) stringResource(R.string.unmute_user)
-                        else stringResource(R.string.mute_user)
-                    )
-                },
-                onClick = {
-                    onToggleMute?.invoke()
-                    menuExpanded = false
-                },
-            )
         }
     }
 }

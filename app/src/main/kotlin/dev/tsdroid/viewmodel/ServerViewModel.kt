@@ -99,6 +99,9 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     // Set of currently talking user IDs (tracked via talk_status events)
     private val _talkingUserIds = MutableStateFlow<Set<Int>>(emptySet())
     val talkingUserIds: StateFlow<Set<Int>> = _talkingUserIds.asStateFlow()
+    
+    // Track local mic state for local user talking highlight
+    private val _isLocalTalking = MutableStateFlow(false)
 
     private val _mutedUserIds = MutableStateFlow<Set<Int>>(emptySet())
     val mutedUserIds: StateFlow<Set<Int>> = _mutedUserIds.asStateFlow()
@@ -125,6 +128,9 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     // Separate PTT mode from actual mute state
     private val _isPttMode = MutableStateFlow(true) // true = PTT, false = voice activity
     val isPttMode: StateFlow<Boolean> = _isPttMode.asStateFlow()
+
+    private val _isOutputMuted = MutableStateFlow(false)
+    val isOutputMuted: StateFlow<Boolean> = _isOutputMuted.asStateFlow()
 
     private val _connectionState = MutableStateFlow(ConnectionState.CONNECTED)
     val connectionState: StateFlow<Int> = _connectionState.asStateFlow()
@@ -180,11 +186,16 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     init {
         // Combine raw users + talking set to produce patched user list
         viewModelScope.launch {
-            combine(_rawUsers, _talkingUserIds) { users, talking ->
-                if (talking.isEmpty()) users
-                else users.map { user ->
-                    if (user.id in talking && !user.isTalking) user.withTalking(true)
-                    else if (user.id !in talking && user.isTalking) user.withTalking(false)
+            combine(_rawUsers, _talkingUserIds, _isLocalTalking) { users, talking, localTalking ->
+                val myId = tsClient?.clientId
+                
+                users.map { user ->
+                    val isLocallyTalking = (user.id == myId && localTalking)
+                    val isRemoteTalking = user.id in talking
+                    val shouldBeTalking = isLocallyTalking || isRemoteTalking
+                    
+                    if (shouldBeTalking && !user.isTalking) user.withTalking(true)
+                    else if (!shouldBeTalking && user.isTalking) user.withTalking(false)
                     else user
                 }
             }.collect { _users.value = it }
@@ -297,6 +308,16 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
             }
             // Apply persisted audio gain
             service.audioBridge.gainFactor = audioGain.value
+            // Observe audio state for local talking status
+            viewModelScope.launch {
+                combine(service.audioBridge.isMuted, service.audioBridge.isCapturing) { isMuted, isCapturing ->
+                    !isMuted && isCapturing
+                }.collect { _isLocalTalking.value = it }
+            }
+            viewModelScope.launch {
+                service.audioBridge.isOutputMuted.collect { _isOutputMuted.value = it }
+            }
+
             // Start event loop (guarded by AtomicBoolean — safe if already running)
             service.tsClient.startEventLoop()
             
@@ -513,6 +534,10 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         _isPttMode.value = newPttMode
         // When switching to PTT mode, mute. When switching to VA, unmute.
         audioBridge?.setMuted(newPttMode)
+    }
+
+    fun toggleOutputMute() {
+        audioBridge?.toggleOutputMute()
     }
 
     fun toggleMuteUser(clientId: Int) {

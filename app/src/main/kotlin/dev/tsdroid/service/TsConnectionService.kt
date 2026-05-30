@@ -287,12 +287,16 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
 
     fun disconnect() {
         isIntentionalDisconnect = true
+        if (instance == this) {
+            instance = null
+        }
         hideFloatingWindow()
         audioBridge.stopCapture()
         serviceScope.launch(Dispatchers.IO) {
-            tsClient.disconnect()
-            withContext(Dispatchers.Main) {
-                if (isIntentionalDisconnect) {
+            try {
+                tsClient.disconnect()
+            } finally {
+                withContext(Dispatchers.Main) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
@@ -329,7 +333,7 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
             }
             format = PixelFormat.TRANSLUCENT
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
             gravity = Gravity.TOP or Gravity.START
             x = 100
@@ -340,6 +344,10 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
         }
 
         val composeView = ComposeView(this).apply {
+            layoutParams = android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
             setViewTreeLifecycleOwner(this@TsConnectionService)
             setViewTreeViewModelStoreOwner(this@TsConnectionService)
             setViewTreeSavedStateRegistryOwner(this@TsConnectionService)
@@ -459,9 +467,13 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
         ) {
             if (!isExpanded) {
                 // --- COLLAPSED AVATAR BUBBLE ---
+                val isSpeaking = !activeSpeakerName.isNullOrEmpty()
+                val borderColor = if (isSpeaking) Color(0xFF2196F3) else Color(0x4DFFFFFF)
+                val borderWidth = if (isSpeaking) 2.dp else 1.dp
+                
                 Surface(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(40.dp) // Make smaller
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
@@ -471,18 +483,19 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                         .clickable { onToggleExpand() },
                     shape = CircleShape,
                     color = CardBackgroundTransparent, // Semitransparent ring
-                    border = BorderStroke(1.dp, Color(0x4DFFFFFF))
+                    border = BorderStroke(borderWidth, borderColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // Render Avatar Circle + Mini Speaker Waveform Indicator
-                        if (!activeSpeakerName.isNullOrEmpty()) {
+                        if (isSpeaking) {
                             // Have speaker: Show user avatar
                             if (activeSpeakerAvatar != null) {
                                 androidx.compose.foundation.Image(
                                     bitmap = activeSpeakerAvatar,
                                     contentDescription = "Active Speaker Avatar",
                                     modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Crop,
+                                    alpha = 1.0f
                                 )
                             } else {
                                 Icon(
@@ -495,11 +508,12 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                         } else {
                             // No speaker: Show software logo
                             androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_launcher_foreground),
+                                painter = androidx.compose.ui.res.painterResource(id = R.mipmap.ic_launcher_round), // using the actual app icon instead of foreground vector which could be odd
                                 contentDescription = "Open Panel",
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .fillMaxSize(0.8f)
+                                    .fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }
@@ -565,17 +579,50 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp, horizontal = 8.dp),
+                                        .padding(vertical = 4.dp, horizontal = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    // Use smaller avatar for the expanded list instead of green dot
+                                    var avatarBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+                                    
+                                    LaunchedEffect(user.uid) {
+                                        if (!user.uid.isNullOrEmpty()) {
+                                            if (avatarCache.getAvatar(user.uid) != null) {
+                                                avatarBitmap = avatarCache.getAvatar(user.uid)
+                                            } else if (!avatarCache.hasNoAvatar(user.uid)) {
+                                                avatarCache.loadAvatar(user.uid, tsClient)
+                                                avatarBitmap = avatarCache.getAvatar(user.uid)
+                                            }
+                                        }
+                                    }
+                                    
                                     Box(
                                         modifier = Modifier
-                                            .size(8.dp)
-                                            .background(
-                                                if (isSpeaking) Color(0xFF4CAF50) else Color.Transparent,
-                                                CircleShape
+                                            .size(24.dp)
+                                            .border(
+                                                width = if (isSpeaking) 2.dp else 0.dp,
+                                                color = if (isSpeaking) Color(0xFF2196F3) else Color.Transparent,
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (avatarBitmap != null) {
+                                            androidx.compose.foundation.Image(
+                                                bitmap = avatarBitmap!!,
+                                                contentDescription = null,
+                                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                contentScale = ContentScale.Crop
                                             )
-                                    )
+                                        } else {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                    
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = user.nickname,

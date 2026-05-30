@@ -32,6 +32,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.HeadsetOff
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
@@ -102,6 +104,7 @@ fun ServerScreen(
     val channelMessages by viewModel.channelMessages.collectAsState()
     val privateMessages by viewModel.privateMessages.collectAsState()
     val isPttMode by viewModel.isPttMode.collectAsState()
+    val isOutputMuted by viewModel.isOutputMuted.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val unreadChannel by viewModel.unreadChannel.collectAsState()
     val unreadPrivate by viewModel.unreadPrivate.collectAsState()
@@ -310,6 +313,16 @@ fun ServerScreen(
                             if (isPttMode) Icons.Default.MicOff else Icons.Default.Mic,
                             contentDescription = stringResource(if (isPttMode) R.string.unmute_mic else R.string.mute_mic),
                             tint = if (isPttMode) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    
+                    // Toggle Output Mute (Deafen)
+                    IconButton(onClick = { viewModel.toggleOutputMute() }) {
+                        Icon(
+                            if (isOutputMuted) Icons.Default.HeadsetOff else Icons.Default.Headset,
+                            contentDescription = stringResource(if (isOutputMuted) R.string.notif_unmute else R.string.notif_mute),
+                            tint = if (isOutputMuted) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.primary,
                         )
                     }
