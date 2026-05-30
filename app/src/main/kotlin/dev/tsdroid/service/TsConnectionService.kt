@@ -24,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -508,11 +509,11 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                         } else {
                             // No speaker: Show software logo
                             androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = R.mipmap.ic_launcher_round), // using the actual app icon instead of foreground vector which could be odd
+                                painter = androidx.compose.ui.res.painterResource(id = R.mipmap.ic_launcher),
                                 contentDescription = "Open Panel",
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .fillMaxSize(),
+                                    .fillMaxSize(0.8f),
                                 contentScale = ContentScale.Crop
                             )
                         }
