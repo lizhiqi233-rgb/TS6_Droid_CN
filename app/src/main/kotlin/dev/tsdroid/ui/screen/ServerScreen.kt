@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,6 +89,7 @@ import dev.tsdroid.viewmodel.DownloadState
 import dev.tsdroid.viewmodel.FileAttachment
 import dev.tsdroid.viewmodel.ServerViewModel
 import kotlinx.coroutines.flow.StateFlow
+import dev.tsdroid.service.WhisperManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,6 +127,11 @@ fun ServerScreen(
     var chatTab by remember { mutableIntStateOf(0) }
     var messageText by remember { mutableStateOf("") }
     var pmTargetId by remember { mutableStateOf<Int?>(null) }
+
+    // Whisper (密聊) state
+    val isWhisperActive by viewModel.isWhisperActive.collectAsState()
+    val whisperTargetUserId by viewModel.whisperTargetUserId.collectAsState()
+    val whisperTargetUser = whisperTargetUserId?.let { id -> users.find { it.id == id } }
 
     // Resolve pmTarget User from users list
     val pmTarget = pmTargetId?.let { id -> users.find { it.id == id } }
@@ -316,7 +323,29 @@ fun ServerScreen(
                             else MaterialTheme.colorScheme.primary,
                         )
                     }
-                    
+
+                    // Whisper (密聊) indicator — shows active state, click to stop
+                    if (isWhisperActive && whisperTargetUser != null) {
+                        IconButton(onClick = { viewModel.toggleWhisper(whisperTargetUserId!!) }) {
+                            Icon(
+                                Icons.Default.Forum,
+                                contentDescription = "停止密聊",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = {},
+                            enabled = false,
+                        ) {
+                            Icon(
+                                Icons.Default.Forum,
+                                contentDescription = "密聊",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            )
+                        }
+                    }
+
                     // Toggle Output Mute (Deafen)
                     IconButton(onClick = { viewModel.toggleOutputMute() }) {
                         Icon(
@@ -346,6 +375,7 @@ fun ServerScreen(
                     chatOpen = true
                 },
                 onUserLongClick = { user -> viewModel.toggleMuteUser(user.id) },
+                onWhisperClick = { userId -> viewModel.toggleWhisper(userId) },
                 mutedUserIds = mutedUserIds,
                 channelIcons = channelIcons,
                 userAvatars = userAvatars,
@@ -419,9 +449,13 @@ fun ServerScreen(
                         onSelectPmUser = { userId -> pmTargetId = userId },
                         onClearPmTarget = { pmTargetId = null },
                         onSend = {
-                            when (chatTab) {
-                                0 -> viewModel.sendChannelMessage(messageText)
-                                1 -> pmTargetId?.let { viewModel.sendPrivateMessage(it, messageText) }
+                            if (isWhisperActive && whisperTargetUser != null) {
+                                viewModel.sendWhisperMessage(messageText)
+                            } else {
+                                when (chatTab) {
+                                    0 -> viewModel.sendChannelMessage(messageText)
+                                    1 -> pmTargetId?.let { viewModel.sendPrivateMessage(it, messageText) }
+                                }
                             }
                             messageText = ""
                         },
@@ -436,6 +470,8 @@ fun ServerScreen(
                             viewModel.uploadAndSendFile(fileName, data, chatTab == 1, pmTargetId)
                         },
                         onDownload = { attachment -> viewModel.downloadAttachment(attachment) },
+                        isWhisperActive = isWhisperActive,
+                        whisperTargetName = whisperTargetUser?.nickname,
                     )
                 }
             }
@@ -466,6 +502,8 @@ private fun ChatPanel(
     canUploadFiles: Boolean = true,
     onUploadFile: (String, ByteArray) -> Unit = { _, _ -> },
     onDownload: ((FileAttachment) -> StateFlow<DownloadState>)? = null,
+    isWhisperActive: Boolean = false,
+    whisperTargetName: String? = null,
 ) {
     val context = LocalContext.current
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -582,6 +620,33 @@ private fun ChatPanel(
                 }
             }
 
+            // Whisper mode indicator
+            if (isWhisperActive && whisperTargetName != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.Forum,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "密聊 ${whisperTargetName}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
+
             // Messages
             val messages = when (chatTab) {
                 0 -> channelMessages
@@ -607,7 +672,7 @@ private fun ChatPanel(
                 if (canUploadFiles) {
                     IconButton(
                         onClick = { filePickerLauncher.launch("*/*") },
-                        enabled = chatTab == 0 || pmTarget != null,
+                        enabled = (chatTab == 0 || pmTarget != null) && !isWhisperActive,
                     ) {
                         Icon(Icons.Default.AttachFile, contentDescription = stringResource(R.string.attach_file))
                     }
@@ -618,16 +683,20 @@ private fun ChatPanel(
                     modifier = Modifier.weight(1f),
                     placeholder = {
                         Text(
-                            if (chatTab == 0) stringResource(R.string.message_channel_placeholder)
-                            else stringResource(R.string.message_private_placeholder, pmTarget?.nickname ?: "?")
+                            when {
+                                isWhisperActive && whisperTargetName != null ->
+                                    "密聊 ${whisperTargetName}..."
+                                chatTab == 0 -> stringResource(R.string.message_channel_placeholder)
+                                else -> stringResource(R.string.message_private_placeholder, pmTarget?.nickname ?: "?")
+                            }
                         )
                     },
                     singleLine = true,
-                    enabled = chatTab == 0 || pmTarget != null,
+                    enabled = chatTab == 0 || pmTarget != null || (isWhisperActive && whisperTargetName != null),
                 )
                 IconButton(
                     onClick = onSend,
-                    enabled = messageText.isNotBlank() && (chatTab == 0 || pmTarget != null),
+                    enabled = messageText.isNotBlank() && (chatTab == 0 || pmTarget != null || (isWhisperActive && whisperTargetName != null)),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.send))
                 }

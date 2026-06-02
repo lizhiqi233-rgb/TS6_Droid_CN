@@ -55,6 +55,7 @@ fun UserItem(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onToggleMute: (() -> Unit)? = null,
+    onWhisperClick: ((Int) -> Unit)? = null,
     isLocallyMuted: Boolean = false,
 ) {
     Box(modifier = modifier) {
@@ -128,6 +129,19 @@ fun UserItem(
                     tint = Color(0xFFFF9800),
                 )
                 Spacer(Modifier.width(2.dp))
+            }
+            if (onWhisperClick != null) {
+                IconButton(
+                    onClick = { onWhisperClick(user.id) },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Forum,
+                        contentDescription = "密聊",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
             }
         }
     }

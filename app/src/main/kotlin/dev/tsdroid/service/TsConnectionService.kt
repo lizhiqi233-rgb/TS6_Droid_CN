@@ -57,6 +57,7 @@ import dev.tsdroid.TsDroidApp
 import dev.tsdroid.bridge.AudioBridge
 import dev.tsdroid.bridge.AvatarCache
 import dev.tsdroid.bridge.TsClient
+import dev.tsdroid.bridge.WhisperBridge
 import dev.tslib.Identity
 import dev.tslib.Channel
 import dev.tslib.User
@@ -391,6 +392,9 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                 }
                 // Start event loop
                 tsClient.startEventLoop()
+                // Initialize whisper manager
+                WhisperManager.init(tsClient)
+                WhisperBridge.tryLoad()
             } catch (e: Exception) {
                 Log.e(TAG, "Connection error", e)
                 withContext(Dispatchers.Main) {
@@ -412,6 +416,7 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
         }
         hideFloatingWindow()
         audioBridge.stopCapture()
+        WhisperManager.reset()
         serviceScope.launch(Dispatchers.IO) {
             try {
                 tsClient.disconnect()

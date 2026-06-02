@@ -28,6 +28,7 @@ import dev.tsdroid.data.BookmarkStore
 import dev.tsdroid.data.MessageStore
 import dev.tsdroid.data.SettingsStore
 import dev.tsdroid.service.TsConnectionService
+import dev.tsdroid.service.WhisperManager
 import dev.tslib.Channel
 import dev.tslib.ConnectionState
 import dev.tslib.Event
@@ -105,6 +106,10 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _mutedUserIds = MutableStateFlow<Set<Int>>(emptySet())
     val mutedUserIds: StateFlow<Set<Int>> = _mutedUserIds.asStateFlow()
+
+    // Whisper (密聊) state — bridged from WhisperManager
+    val isWhisperActive: StateFlow<Boolean> = WhisperManager.isWhisperActive
+    val whisperTargetUserId: StateFlow<Int?> = WhisperManager.targetUserId
 
     // Users with isTalking patched from talk status events
     private val _users = MutableStateFlow<List<User>>(emptyList())
@@ -588,6 +593,23 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         _privateMessages.value = current
         scheduleSave()
     }
+
+    // ── Whisper (密聊) ──────────────────────────────────────────
+
+    fun toggleWhisper(userId: Int) {
+        if (WhisperManager.isWhisperActive.value && WhisperManager.targetUserId.value == userId) {
+            WhisperManager.stopWhisper(tsClient)
+        } else {
+            WhisperManager.startWhisper(tsClient, userId)
+        }
+    }
+
+    fun sendWhisperMessage(text: String) {
+        WhisperManager.sendWhisperMessage(tsClient, text)
+    }
+
+    val whisperCandidateUsers: List<User>
+        get() = _users.value.filter { it.id != tsClient?.clientId }
 
     fun moveToChannel(channelId: Long) {
         tsClient?.moveToChannel(channelId)
