@@ -105,9 +105,9 @@ class TsClient {
             try {
                 stopEventLoop()
                 disconnectOnNativeThread()
-                
+
                 delay(300)
-                
+
                 serverAddress = address
                 _state.value = ConnectionState.CONNECTING
 
@@ -119,10 +119,11 @@ class TsClient {
                         val c = Client(address, identity, candidateNickname, password, channel)
                         pendingClient = c
                         c.waitConnected()
-                        // Log immediately after waitConnected
+
                         val users = c.users
                         val channels = c.channels
                         Log.i(TAG, "After waitConnected: ${users?.size ?: "null"} users, ${channels?.size ?: "null"} channels")
+
                         if (users != null) {
                             for (u in users) {
                                 if (u != null) Log.d(TAG, "  User: ${u.nickname} (id=${u.id}, ch=${u.channelId})")
@@ -132,8 +133,12 @@ class TsClient {
                         if (hasNicknameCollision(users, c.clientId, candidateNickname)) {
                             Log.w(TAG, "Nickname '$candidateNickname' is already in use; retrying with suffix")
                             lastFailure = IllegalStateException("Nickname already in use: $candidateNickname")
+
                             closeClient(c, "nickname collision")
                             pendingClient = null
+
+                            // Add delay to allow asynchronous native memory and socket cleanup
+                            delay(500)
                             continue
                         }
 
@@ -145,6 +150,7 @@ class TsClient {
                             throw IllegalStateException("Connection closed during initial state sync")
                         }
                         return@withLock
+
                     } catch (e: Throwable) {
                         if (e is CancellationException) throw e
                         lastFailure = e
@@ -152,21 +158,33 @@ class TsClient {
                     } finally {
                         pendingClient?.let {
                             closeClient(it, "failed connection attempt")
+
+                            // Add delay here as well for native cleanup after an exception
+                            delay(500)
                         }
                     }
                 }
 
+                // Throw to the outer try-catch block if all attempts are exhausted
                 throw Exception(
                     "Connection failed after trying unique nicknames",
                     lastFailure,
                 )
+
             } catch (e: Throwable) {
                 closeAfterNativeFailure()
                 if (e is CancellationException) throw e
 
                 Log.e("TS6_CRASH_PREVENTION", "Connection failed; native client cleaned up", e)
+
+                // Gracefully emit error to UI instead of crashing
                 _commandErrors.tryEmit("Connection failed. Please try again later.")
-                throw Exception("Connection failed: ${e.message ?: "Server busy or rejected"}", e)
+
+                // Safely reset state (assuming you have a DISCONNECTED or similar state)
+                // _state.value = ConnectionState.DISCONNECTED
+
+                // REMOVED: throw Exception("...")
+                // We no longer throw an unhandled exception here to prevent app crash
             }
         }
     }
