@@ -496,6 +496,7 @@ fun ServerScreen(
             }
         }
     }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
