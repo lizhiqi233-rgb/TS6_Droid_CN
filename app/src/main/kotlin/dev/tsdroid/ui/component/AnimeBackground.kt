@@ -3,6 +3,8 @@ package dev.tsdroid.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -15,13 +17,13 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-@Composable
-fun AnimeBackground(enabled: Boolean) {
-    if (!enabled) return
+object AnimeWallpaperState {
+    val currentUrl = mutableStateOf<String?>(null)
+    private var fetched = false
 
-    var imageUrl by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
+    suspend fun ensureFetched() {
+        if (fetched) return
+        fetched = true
         withContext(Dispatchers.IO) {
             try {
                 val url = URL("https://www.loliapi.com/acg/pe/")
@@ -30,31 +32,49 @@ fun AnimeBackground(enabled: Boolean) {
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
                 val redirect = conn.getHeaderField("Location")
-                if (!redirect.isNullOrBlank()) {
-                    imageUrl = redirect
-                } else {
-                    imageUrl = conn.url.toString()
-                }
+                val finalUrl = if (!redirect.isNullOrBlank()) redirect else conn.url.toString()
                 conn.disconnect()
+                currentUrl.value = finalUrl
             } catch (_: Exception) {
+                fetched = false
             }
         }
     }
+}
 
-    val url = imageUrl
-    if (url.isNullOrBlank()) return
+@Composable
+fun AnimeBackground(enabled: Boolean) {
+    if (!enabled) return
+
+    LaunchedEffect(Unit) {
+        AnimeWallpaperState.ensureFetched()
+    }
+
+    val url = AnimeWallpaperState.currentUrl.value
+
+    var imageLoaded by remember { mutableStateOf(false) }
+    val imageAlpha by animateFloatAsState(
+        targetValue = if (imageLoaded) 1f else 0f,
+        animationSpec = tween(durationMillis = 600),
+        label = "bgFadeIn",
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .alpha(0.75f)
     ) {
-        AsyncImage(
-            model = url,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(imageAlpha),
+                onSuccess = { imageLoaded = true },
+            )
+        }
 
         Box(
             modifier = Modifier
