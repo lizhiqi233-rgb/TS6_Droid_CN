@@ -55,6 +55,17 @@ public class Channel {
         this.permissionHints = permissionHints;
     }
 
+    public Channel(long id, long parentId, String name, String topic,
+                   String description, int order, boolean isPermanent,
+                   boolean isSemiPermanent, boolean isDefault,
+                   boolean hasPassword, byte codec, byte codecQuality,
+                   int maxClients, int maxFamilyClients,
+                   int neededTalkPower, long iconId) {
+        this(id, parentId, name, topic, description, order, isPermanent,
+             isSemiPermanent, isDefault, hasPassword, codec, codecQuality,
+             maxClients, maxFamilyClients, neededTalkPower, iconId, 0L);
+    }
+
     public boolean canUploadFile() {
         return (permissionHints & PERM_FILE_UPLOAD) != 0;
     }

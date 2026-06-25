@@ -9,6 +9,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
+import android.util.Log
 import androidx.core.content.ContextCompat
 import dev.tslib.AudioConfig
 import dev.tslib.OpusCodec
@@ -32,6 +33,7 @@ class AudioBridge(
     private val tsClient: TsClient,
 ) {
     companion object {
+        private const val TAG = "AudioBridge"
         const val SAMPLE_RATE = 48000
         const val CODEC_OPUS_VOICE = 4
         private const val FRAME_SIZE_MS = 20
@@ -100,28 +102,61 @@ class AudioBridge(
         if (_isCapturing.value) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) {
+            Log.w(TAG, "Cannot start capture: RECORD_AUDIO permission is missing")
+            return
+        }
 
         val minBuf = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
         )
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(minBuf, FRAME_SIZE_BYTES * 4),
-        )
-        audioRecord?.startRecording()
+        val record = try {
+            AudioRecord(
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                maxOf(minBuf, FRAME_SIZE_BYTES * 4),
+            )
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to create AudioRecord", e)
+            return
+        }
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            Log.e(TAG, "AudioRecord is not initialized")
+            record.release()
+            return
+        }
+        try {
+            record.startRecording()
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to start microphone capture", e)
+            record.release()
+            return
+        }
+        audioRecord = record
         _isCapturing.value = true
 
         captureJob = scope.launch(Dispatchers.IO) {
             val buffer = ShortArray(FRAME_SIZE_SAMPLES)
-            val codec = encoder ?: return@launch
+            val codec = encoder ?: run {
+                Log.e(TAG, "Cannot start capture: Opus encoder is not initialized")
+                _isCapturing.value = false
+                return@launch
+            }
             while (isActive && _isCapturing.value) {
-                val read = audioRecord?.read(buffer, 0, FRAME_SIZE_SAMPLES) ?: break
+                val read = try {
+                    audioRecord?.read(buffer, 0, FRAME_SIZE_SAMPLES) ?: break
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Microphone read failed", e)
+                    break
+                }
+                if (read < 0) {
+                    Log.e(TAG, "Microphone read returned error $read")
+                    break
+                }
                 if (read == FRAME_SIZE_SAMPLES && !_isMuted.value) {
                     var energy = 0L
                     for (i in 0 until read) {
@@ -140,7 +175,18 @@ class AudioBridge(
                     _isLocalVoiceActive.value = false
                 }
             }
+            _isCapturing.value = false
             _isLocalVoiceActive.value = false
+            val finishedRecord = audioRecord
+            audioRecord = null
+            try {
+                finishedRecord?.stop()
+            } catch (_: Throwable) {
+            }
+            try {
+                finishedRecord?.release()
+            } catch (_: Throwable) {
+            }
         }
     }
 

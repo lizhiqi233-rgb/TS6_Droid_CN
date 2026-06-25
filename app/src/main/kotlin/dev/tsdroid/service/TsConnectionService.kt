@@ -133,9 +133,14 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
     private var lastSavedY = 300
     
     private var isIntentionalDisconnect = false
+    private var latestStartId = 0
+    @Volatile private var isStopping = false
+    @Volatile private var restartRequestedWhileStopping = false
 
     override fun onCreate() {
         super.onCreate()
+        isStopping = false
+        restartRequestedWhileStopping = false
         instance = this
         Log.d(TAG, "Foreground Service Created")
         savedStateRegistryController.performRestore(null)
@@ -311,7 +316,26 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        if (intent == null) {
+            Log.d(TAG, "Ignoring sticky restart without an explicit intent")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
+        latestStartId = startId
         startServiceForeground()
+
+        if (isStopping) {
+            if (intent.action != ACTION_DISCONNECT) {
+                Log.d(TAG, "Start requested while service is stopping; will reopen after disconnect completes")
+                restartRequestedWhileStopping = true
+            }
+            return START_NOT_STICKY
+        }
+
+        if (instance == null) {
+            instance = this
+        }
         
         when (intent?.action) {
             ACTION_DISCONNECT -> {
@@ -322,7 +346,7 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                 updateNotification()
             }
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -332,14 +356,21 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
 
     private fun startServiceForeground() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification())
-            }
+            startForeground(NOTIFICATION_ID, buildNotification(), foregroundServiceType())
         } else {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
+    }
+
+    private fun foregroundServiceType(): Int {
+        var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        }
+        return type
     }
 
     private fun updateNotification() {
@@ -380,53 +411,100 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
             .build()
     }
 
-    fun connect(address: String, identity: Identity, nickname: String, password: String?) {
+    fun hasActiveConnection(address: String? = null): Boolean {
+        return !isStopping &&
+            tsClient.isConnected &&
+            (address == null || tsClient.serverAddress == address)
+    }
+
+    suspend fun connect(address: String, identity: Identity, nickname: String, password: String?): Throwable? {
+        if (isStopping) {
+            return IllegalStateException("Connection service is still stopping. Please try again.")
+        }
+
         isIntentionalDisconnect = false
-        serviceScope.launch {
-            try {
-                tsClient.connect(address, identity, nickname, password)
-                audioBridge.startCapture(serviceScope)
-                // Sync initial mute state with server
-                if (audioBridge.isMuted.value) {
-                    tsClient.setInputMuted(true)
-                }
-                // Start event loop
-                tsClient.startEventLoop()
-                // Initialize whisper manager
-                WhisperManager.init(tsClient)
-                WhisperBridge.tryLoad()
-            } catch (e: Exception) {
-                Log.e(TAG, "Connection error", e)
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        applicationContext,
-                        "Connection failed: ${e.message}",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }
-                disconnect()
+        return try {
+            tsClient.connect(address, identity, nickname, password)
+            audioBridge.startCapture(serviceScope)
+            // Sync initial mute state with server
+            if (audioBridge.isMuted.value) {
+                tsClient.setInputMuted(true)
             }
+            // Start event loop
+            tsClient.startEventLoop()
+            // Initialize whisper manager
+            WhisperManager.init(tsClient)
+            WhisperBridge.tryLoad()
+            null
+        } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.e(TAG, "Connection error", e)
+            cleanupFailedConnection()
+            e
         }
     }
 
     fun disconnect() {
+        disconnectAndStop()
+    }
+
+    private fun disconnectAndStop() {
+        if (isStopping) return
+        val stopStartId = latestStartId
+        prepareToStop()
         isIntentionalDisconnect = true
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                tsClient.disconnect()
+            } finally {
+                withContext(Dispatchers.Main) {
+                    finishStopOrRestart(stopStartId)
+                }
+            }
+        }
+    }
+
+    private fun prepareToStop() {
+        isStopping = true
         if (instance == this) {
             instance = null
         }
         hideFloatingWindow()
         audioBridge.stopCapture()
         WhisperManager.reset()
-        serviceScope.launch(Dispatchers.IO) {
-            try {
-                tsClient.disconnect()
-            } finally {
-                withContext(Dispatchers.Main) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                }
-            }
+    }
+
+    private fun cleanupFailedConnection() {
+        hideFloatingWindow()
+        audioBridge.stopCapture()
+        WhisperManager.reset()
+        isStopping = false
+        restartRequestedWhileStopping = false
+        instance = this
+        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    private fun finishStopOrRestart(stopStartId: Int) {
+        if (restartRequestedWhileStopping || latestStartId != stopStartId) {
+            restartRequestedWhileStopping = false
+            isStopping = false
+            instance = this
+            updateNotification()
+            return
         }
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        if (stopStartId != 0) {
+            stopSelf(stopStartId)
+        } else {
+            stopSelf()
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d(TAG, "Task removed; disconnecting foreground TS session")
+        disconnectAndStop()
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun hasOverlayPermission(): Boolean {
@@ -636,6 +714,13 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
         instance = null
         serviceViewModelStore.clear()
         hideFloatingWindow()
+        audioBridge.stopCapture()
+        WhisperManager.reset()
+        try {
+            tsClient.disconnect()
+        } catch (e: Throwable) {
+            Log.w(TAG, "Best-effort disconnect during service destroy failed", e)
+        }
         audioBridge.release()
         serviceScope.cancel()
         super.onDestroy()

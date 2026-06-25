@@ -28,6 +28,27 @@ public class ServerInfo {
         this.iconId = iconId;
     }
 
+    public ServerInfo(String name, String platform, String version,
+                      int maxClients, int clientsOnline, int channelsOnline,
+                      long uptime, String welcomeMessage) {
+        this(name, platform, version, maxClients, clientsOnline,
+             channelsOnline, uptime, welcomeMessage, 0L);
+    }
+
+    public ServerInfo(String name, String platform, String version,
+                      int maxClients, int clientsOnline,
+                      String welcomeMessage, long iconId) {
+        this(name, platform, version, maxClients, clientsOnline,
+             0, 0L, welcomeMessage, iconId);
+    }
+
+    public ServerInfo(String name, String platform, String version,
+                      int maxClients, int clientsOnline,
+                      String welcomeMessage) {
+        this(name, platform, version, maxClients, clientsOnline,
+             welcomeMessage, 0L);
+    }
+
     @Override
     public String toString() {
         return "ServerInfo(name='" + name + "')";

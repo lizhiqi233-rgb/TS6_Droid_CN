@@ -14,6 +14,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.tsdroid.bridge.MAX_NICKNAME_COLLISION_ATTEMPTS
+import dev.tsdroid.bridge.hasNicknameCollision
+import dev.tsdroid.bridge.nicknameWithCollisionSuffix
 import dev.tsdroid.han.R
 import dev.tsdroid.data.BookmarkStore
 import dev.tsdroid.data.ServerBookmark
@@ -24,6 +27,7 @@ import dev.tslib.Client
 import dev.tslib.ConnectionState
 import dev.tslib.Identity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -101,12 +105,22 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private var serviceConnection: ServiceConnection? = null
+    private var connectJob: kotlinx.coroutines.Job? = null
+    private var cloneBypassIdentity: Identity? = null
 
     fun connect(onConnected: () -> Unit) {
         val addr = address.value.trim()
         val nick = nickname.value.trim()
         if (addr.isEmpty() || nick.isEmpty()) {
             _error.value = getApplication<Application>().getString(R.string.error_address_nickname_required)
+            return
+        }
+
+        val existingService = TsConnectionService.instance
+        if (existingService?.hasActiveConnection(addr) == true) {
+            _connectionState.value = ConnectionState.CONNECTED
+            _error.value = null
+            onConnected()
             return
         }
 
@@ -134,14 +148,17 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             return
         }
 
+        // Cancel any previous connection attempt to avoid stale collectors
+        connectJob?.cancel()
+
         // Wait for the service instance to be available
-        viewModelScope.launch {
+        connectJob = viewModelScope.launch {
             var attempts = 0
             while (TsConnectionService.instance == null && attempts < 50) {
                 kotlinx.coroutines.delay(100)
                 attempts++
             }
-            
+
             val service = TsConnectionService.instance
             if (service == null) {
                 _connectionState.value = ConnectionState.DISCONNECTED
@@ -152,23 +169,37 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 val identity = getOrCreateIdentity()
                 val pw = password.value.trim().takeIf { it.isNotEmpty() }
-                val ch = channel.value.trim().takeIf { it.isNotEmpty() }
-                service.connect(addr, identity, nick, pw)
-                // Note: The original code passed 'ch' to connect, but TsConnectionService.connect doesn't take a channel parameter.
-                // If channel joining is needed, it should be handled after connection.
-                
-                // Observe the actual connection state from the service
-                service.tsClient.state.collect { state ->
-                    _connectionState.value = state
-                    if (state == ConnectionState.CONNECTED) {
-                        onConnected()
-                    }
+                var connectionFailure = service.connect(addr, identity, nick, pw)
+                if (connectionFailure?.isTooManyClonesFailure() == true) {
+                    Log.w(TAG, "Too many clones for saved identity; retrying with a temporary identity")
+                    connectionFailure = service.connect(addr, getCloneBypassIdentity(), nick, pw)
                 }
+
+                if (connectionFailure == null) {
+                    _connectionState.value = ConnectionState.CONNECTED
+                    onConnected()
+                } else {
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                    _error.value = connectionFailure.message
+                        ?: getApplication<Application>().getString(R.string.connection_failed)
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _connectionState.value = ConnectionState.DISCONNECTED
                 _error.value = e.message ?: getApplication<Application>().getString(R.string.connection_failed)
             }
         }
+    }
+
+    fun resumeExistingConnection(onConnected: () -> Unit): Boolean {
+        val service = TsConnectionService.instance ?: return false
+        if (!service.hasActiveConnection()) return false
+
+        _connectionState.value = ConnectionState.CONNECTED
+        _error.value = null
+        onConnected()
+        return true
     }
 
     fun connectBookmark(bookmark: ServerBookmark, onConnected: () -> Unit) {
@@ -188,6 +219,7 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun tryAutoReconnect(onConnected: () -> Unit) {
         if (autoReconnectAttempted) return
+        if (resumeExistingConnection(onConnected)) return
         autoReconnectAttempted = true
         viewModelScope.launch {
             val lastAddr = bookmarkStore.lastBookmarkAddress.first()
@@ -265,29 +297,53 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
                 val channels = withContext(Dispatchers.IO) {
                     val identity = getOrCreateIdentity()
                     val pw = password.value.trim().takeIf { it.isNotEmpty() }
-                    val client = Client(addr, identity, nick, pw, null)
-                    try {
-                        client.waitConnected()
-                        // Pump events until channels are available (or timeout)
-                        val deadline = System.currentTimeMillis() + 5000
-                        while (System.currentTimeMillis() < deadline) {
-                            client.processEvents()
-                            val raw = client.channels
-                            if (raw != null && raw.isNotEmpty()) break
-                            Thread.sleep(20)
+                    var lastFailure: Throwable? = null
+
+                    for (attempt in 0 until MAX_NICKNAME_COLLISION_ATTEMPTS) {
+                        val candidateNick = nicknameWithCollisionSuffix(nick, attempt)
+                        var client: Client? = null
+                        try {
+                            try {
+                                identity.setNickname(candidateNick)
+                            } catch (e: Throwable) {
+                                if (e is CancellationException) throw e
+                                Log.w(TAG, "Failed to update identity nickname before browsing", e)
+                            }
+                            val c = Client(addr, identity, candidateNick, pw, null)
+                            client = c
+                            c.waitConnected()
+                            // Pump events until channels are available (or timeout)
+                            val deadline = System.currentTimeMillis() + 5000
+                            while (System.currentTimeMillis() < deadline) {
+                                c.processEvents()
+                                val raw = c.channels
+                                if (raw != null && raw.isNotEmpty()) break
+                                Thread.sleep(20)
+                            }
+
+                            if (hasNicknameCollision(c.users, c.clientId, candidateNick)) {
+                                lastFailure = IllegalStateException("Nickname already in use: $candidateNick")
+                                disconnectAndClose(c)
+                                client = null
+                                continue
+                            }
+
+                            val ch = c.channels?.filterNotNull() ?: emptyList()
+                            disconnectAndClose(c)
+                            client = null
+                            return@withContext ch
+                        } catch (e: Throwable) {
+                            if (e is CancellationException) throw e
+                            lastFailure = e
+                        } finally {
+                            client?.let { closeQuietly(it) }
                         }
-                        val ch = client.channels?.filterNotNull() ?: emptyList()
-                        // Disconnect + flush
-                        client.disconnect()
-                        val flushEnd = System.currentTimeMillis() + 500
-                        while (System.currentTimeMillis() < flushEnd) {
-                            client.processEvents()
-                            Thread.sleep(20)
-                        }
-                        ch
-                    } finally {
-                        client.close()
                     }
+
+                    throw Exception(
+                        "Browse failed after trying unique nicknames",
+                        lastFailure,
+                    )
                 }
                 browsedChannels.value = channels
                 showChannelPicker.value = true
@@ -312,6 +368,27 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         _error.value = null
     }
 
+    private fun disconnectAndClose(client: Client) {
+        try {
+            client.disconnect()
+            val flushEnd = System.currentTimeMillis() + 500
+            while (System.currentTimeMillis() < flushEnd) {
+                client.processEvents()
+                Thread.sleep(20)
+            }
+        } catch (_: Throwable) {
+        } finally {
+            closeQuietly(client)
+        }
+    }
+
+    private fun closeQuietly(client: Client) {
+        try {
+            client.close()
+        } catch (_: Throwable) {
+        }
+    }
+
     private fun getOrCreateIdentity(): Identity {
         val context = getApplication<Application>()
         val identityFile = File(context.filesDir, "identity.ini")
@@ -322,6 +399,24 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             identity.save(identityFile.absolutePath)
             identity
         }
+    }
+
+    private fun getCloneBypassIdentity(): Identity {
+        return cloneBypassIdentity ?: Identity().also {
+            cloneBypassIdentity = it
+        }
+    }
+
+    private fun Throwable.isTooManyClonesFailure(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            val message = current.message?.lowercase().orEmpty()
+            if ("toomanyclones" in message || "too many clones" in message) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     fun showFloatingWindow() {

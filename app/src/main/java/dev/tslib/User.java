@@ -70,6 +70,24 @@ public class User {
         this.iconId = iconId;
     }
 
+    public User(int id, String uid, long databaseId, long channelId,
+                String nickname, byte clientType, boolean isTalking,
+                boolean isInputMuted, boolean isOutputMuted,
+                boolean hasInputHardware, boolean hasOutputHardware,
+                boolean isAway, boolean isRecording,
+                boolean isPrioritySpeaker, boolean isChannelCommander,
+                boolean isTalker, int talkPower, String awayMessage,
+                long[] serverGroups, long channelGroup,
+                String platform, String version,
+                String country, String description,
+                String avatarId) {
+        this(id, uid, databaseId, channelId, nickname, clientType, isTalking,
+             isInputMuted, isOutputMuted, hasInputHardware, hasOutputHardware,
+             isAway, isRecording, isPrioritySpeaker, isChannelCommander,
+             isTalker, talkPower, awayMessage, serverGroups, channelGroup,
+             platform, version, country, description, avatarId, 0L);
+    }
+
     /**
      * Whether this is a server query client.
      */
