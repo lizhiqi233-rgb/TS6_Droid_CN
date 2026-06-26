@@ -69,6 +69,7 @@
     <string name="confirm">Confirmer</string>
     <string name="update_check">Vérifier les mises à jour</string>
     <string name="update_found">Nouvelle version disponible</string>
+    <string name="update_already_latest">Déjà à jour</string>
     <string name="update_available">Nouvelle version %1$s disponible</string>
     <string name="update_download">Mettre à jour</string>
     <string name="update_later">Plus tard</string>

@@ -58,7 +58,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -90,19 +90,19 @@ fun ConnectionScreen(
     onNavigateToAbout: () -> Unit,
     viewModel: ConnectionViewModel = viewModel(),
 ) {
-    val address by viewModel.address.collectAsState()
-    val nickname by viewModel.nickname.collectAsState()
-    val password by viewModel.password.collectAsState()
-    val channel by viewModel.channel.collectAsState()
-    val bookmarks by viewModel.bookmarks.collectAsState()
-    val bookmarkIcons by viewModel.bookmarkIcons.collectAsState()
-    val autoReconnect by viewModel.autoReconnect.collectAsState()
-    val editingIndex by viewModel.editingIndex.collectAsState()
-    val connectionState by viewModel.connectionState.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val browsedChannels by viewModel.browsedChannels.collectAsState()
-    val isBrowsing by viewModel.isBrowsing.collectAsState()
-    val showChannelPicker by viewModel.showChannelPicker.collectAsState()
+    val address by viewModel.address.collectAsStateWithLifecycle()
+    val nickname by viewModel.nickname.collectAsStateWithLifecycle()
+    val password by viewModel.password.collectAsStateWithLifecycle()
+    val channel by viewModel.channel.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val bookmarkIcons by viewModel.bookmarkIcons.collectAsStateWithLifecycle()
+    val autoReconnect by viewModel.autoReconnect.collectAsStateWithLifecycle()
+    val editingIndex by viewModel.editingIndex.collectAsStateWithLifecycle()
+    val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val browsedChannels by viewModel.browsedChannels.collectAsStateWithLifecycle()
+    val isBrowsing by viewModel.isBrowsing.collectAsStateWithLifecycle()
+    val showChannelPicker by viewModel.showChannelPicker.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var deleteConfirmIndex by remember { mutableStateOf<Int?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -113,7 +113,7 @@ fun ConnectionScreen(
     val isConnecting = connectionState == ConnectionState.CONNECTING
     val context = LocalContext.current
     val settingsStore = remember { dev.tsdroid.data.SettingsStore(context) }
-    val animeBackground by settingsStore.animeBackground.collectAsState(initial = true)
+    val animeBackground by settingsStore.animeBackground.collectAsStateWithLifecycle(initialValue = true)
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()

@@ -51,6 +51,7 @@
     <string name="confirm">Confirm</string>
     <string name="update_check">Check for updates</string>
     <string name="update_found">New version available</string>
+    <string name="update_already_latest">Already up to date</string>
     <string name="update_available">New version %1$s available</string>
     <string name="update_download">Update now</string>
     <string name="update_later">Later</string>

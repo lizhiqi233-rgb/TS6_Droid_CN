@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -557,11 +558,11 @@ class TsConnectionService : LifecycleService(), ViewModelStoreOwner, SavedStateR
                 val screenWidthDp = configuration.screenWidthDp.dp
                 val screenHeightDp = configuration.screenHeightDp.dp
                 
-                val channels by tsClient.channels.collectAsState()
-                val users by tsClient.users.collectAsState()
-                val isMicMuted by audioBridge.isMuted.collectAsState()
-                val isOutputMuted by audioBridge.isOutputMuted.collectAsState()
-                val isLocalVoiceActive by audioBridge.isLocalVoiceActive.collectAsState()
+                val channels by tsClient.channels.collectAsStateWithLifecycle()
+                val users by tsClient.users.collectAsStateWithLifecycle()
+                val isMicMuted by audioBridge.isMuted.collectAsStateWithLifecycle()
+                val isOutputMuted by audioBridge.isOutputMuted.collectAsStateWithLifecycle()
+                val isLocalVoiceActive by audioBridge.isLocalVoiceActive.collectAsStateWithLifecycle()
                 
                 // Listen to local voice activity and apply delay mechanism
                 LaunchedEffect(isLocalVoiceActive) {

@@ -66,7 +66,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,32 +106,32 @@ fun ServerScreen(
     onNavigateToAbout: () -> Unit,
     viewModel: ServerViewModel = viewModel(),
 ) {
-    val channels by viewModel.channels.collectAsState()
-    val users by viewModel.users.collectAsState()
-    val channelIcons by viewModel.channelIcons.collectAsState()
-    val userAvatars by viewModel.avatars.collectAsState()
-    val serverInfo by viewModel.serverInfo.collectAsState()
-    val channelMessages by viewModel.channelMessages.collectAsState()
-    val privateMessages by viewModel.privateMessages.collectAsState()
-    val isPttMode by viewModel.isPttMode.collectAsState()
-    val isOutputMuted by viewModel.isOutputMuted.collectAsState()
-    val connectionState by viewModel.connectionState.collectAsState()
-    val unreadChannel by viewModel.unreadChannel.collectAsState()
-    val unreadPrivate by viewModel.unreadPrivate.collectAsState()
-    val audioGain by viewModel.audioGain.collectAsState()
-    val showLinkThumbnails by viewModel.showLinkThumbnails.collectAsState()
-    val autoLoadImages by viewModel.autoLoadImages.collectAsState()
-    val enableFloatingWindow by viewModel.enableFloatingWindow.collectAsState()
-    val animeBackground by viewModel.animeBackground.collectAsState()
-    val noiseSuppression by viewModel.noiseSuppression.collectAsState()
-    val mutedUserIds by viewModel.mutedUserIds.collectAsState()
-    val fileManagerOpen by viewModel.fileManagerOpen.collectAsState()
-    val fileList by viewModel.fileList.collectAsState()
-    val previewImageBytes by viewModel.previewImageBytes.collectAsState()
-    val previewImageName by viewModel.previewImageName.collectAsState()
-    val currentFilePath by viewModel.currentFilePath.collectAsState()
-    val fileManagerLoading by viewModel.fileManagerLoading.collectAsState()
-    val channelPermissions by viewModel.currentChannelPermissions.collectAsState()
+    val channels by viewModel.channels.collectAsStateWithLifecycle()
+    val users by viewModel.users.collectAsStateWithLifecycle()
+    val channelIcons by viewModel.channelIcons.collectAsStateWithLifecycle()
+    val userAvatars by viewModel.avatars.collectAsStateWithLifecycle()
+    val serverInfo by viewModel.serverInfo.collectAsStateWithLifecycle()
+    val channelMessages by viewModel.channelMessages.collectAsStateWithLifecycle()
+    val privateMessages by viewModel.privateMessages.collectAsStateWithLifecycle()
+    val isPttMode by viewModel.isPttMode.collectAsStateWithLifecycle()
+    val isOutputMuted by viewModel.isOutputMuted.collectAsStateWithLifecycle()
+    val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+    val unreadChannel by viewModel.unreadChannel.collectAsStateWithLifecycle()
+    val unreadPrivate by viewModel.unreadPrivate.collectAsStateWithLifecycle()
+    val audioGain by viewModel.audioGain.collectAsStateWithLifecycle()
+    val showLinkThumbnails by viewModel.showLinkThumbnails.collectAsStateWithLifecycle()
+    val autoLoadImages by viewModel.autoLoadImages.collectAsStateWithLifecycle()
+    val enableFloatingWindow by viewModel.enableFloatingWindow.collectAsStateWithLifecycle()
+    val animeBackground by viewModel.animeBackground.collectAsStateWithLifecycle()
+    val noiseSuppression by viewModel.noiseSuppression.collectAsStateWithLifecycle()
+    val mutedUserIds by viewModel.mutedUserIds.collectAsStateWithLifecycle()
+    val fileManagerOpen by viewModel.fileManagerOpen.collectAsStateWithLifecycle()
+    val fileList by viewModel.fileList.collectAsStateWithLifecycle()
+    val previewImageBytes by viewModel.previewImageBytes.collectAsStateWithLifecycle()
+    val previewImageName by viewModel.previewImageName.collectAsStateWithLifecycle()
+    val currentFilePath by viewModel.currentFilePath.collectAsStateWithLifecycle()
+    val fileManagerLoading by viewModel.fileManagerLoading.collectAsStateWithLifecycle()
+    val channelPermissions by viewModel.currentChannelPermissions.collectAsStateWithLifecycle()
 
     var chatOpen by remember { mutableStateOf(false) }
     var chatEverOpened by remember { mutableStateOf(false) }

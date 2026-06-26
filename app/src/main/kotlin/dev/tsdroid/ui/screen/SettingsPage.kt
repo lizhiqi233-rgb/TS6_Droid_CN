@@ -425,6 +425,7 @@ fun SettingsPage(
         var isCheckingUpdate by remember { mutableStateOf(false) }
         var updateInfo by remember { mutableStateOf<dev.tsdroid.update.UpdateInfo?>(null) }
         var showUpdateDialog by remember { mutableStateOf(false) }
+        var isLatestVersion by remember { mutableStateOf(false) }
 
         if (showUpdateDialog && updateInfo != null) {
             AlertDialog(
@@ -466,11 +467,15 @@ fun SettingsPage(
                 .clickable {
                     if (!isCheckingUpdate) {
                         isCheckingUpdate = true
+                        isLatestVersion = false
+                        updateInfo = null
                         scope.launch {
                             val result = dev.tsdroid.update.UpdateChecker.checkForUpdate(versionName)
                             updateInfo = result
                             if (result != null) {
                                 showUpdateDialog = true
+                            } else {
+                                isLatestVersion = true
                             }
                             isCheckingUpdate = false
                         }
@@ -495,6 +500,12 @@ fun SettingsPage(
                     text = stringResource(R.string.update_found),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
+                )
+            } else if (isLatestVersion) {
+                Text(
+                    text = stringResource(R.string.update_already_latest),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(
