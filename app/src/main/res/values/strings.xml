@@ -56,6 +56,17 @@
     <string name="unmute_mic">Activer le micro</string>
     <string name="tab_channel">Channel</string>
     <string name="tab_private">MP</string>
+    <string name="tab_home">Accueil</string>
+    <string name="tab_settings">Paramètres</string>
+    <string name="no_connection">Aucune connexion</string>
+    <string name="wallpaper_cache_size">Cache fond d\'écran : %1$s Mo (%2$d images)</string>
+    <string name="wallpaper_max_cache">Cache max : %1$d Mo</string>
+    <string name="wallpaper_view_cache">Voir le cache des fonds d\'écran</string>
+    <string name="wallpaper_cache_images">fonds d\'écran</string>
+    <string name="wallpaper_clear_cache">Vider le cache des fonds d\'écran</string>
+    <string name="wallpaper_clear_cache_confirm">Êtes-vous sûr de vouloir vider tout le cache des fonds d\'écran ? Cette action est irréversible.</string>
+    <string name="wallpaper_cache_empty">Aucun fond d\'écran en cache</string>
+    <string name="confirm">Confirmer</string>
     <string name="close">Fermer</string>
     <string name="filter_all">Tous</string>
     <string name="message_channel_placeholder">Message channel\u2026</string>

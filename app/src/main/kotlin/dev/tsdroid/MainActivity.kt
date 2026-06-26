@@ -9,11 +9,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import dev.tsdroid.data.SettingsStore
 import dev.tsdroid.viewmodel.ConnectionViewModel
 import dev.tsdroid.ui.theme.TsDroidTheme
 import dev.tsdroid.ui.screen.AppNavigation
+import dev.tsdroid.ui.screen.SplashScreen
+import dev.tsdroid.ui.component.AnimeWallpaperState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -42,9 +45,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TsDroidTheme {
+            var showSplash by remember { mutableStateOf(true) }
+            val seedColor = AnimeWallpaperState.dominantColor.value
+
+            TsDroidTheme(seedColor = if (showSplash) null else seedColor) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation()
+                    if (showSplash) {
+                        SplashScreen(onReady = { showSplash = false })
+                    } else {
+                        AppNavigation()
+                    }
                 }
             }
         }
@@ -52,7 +62,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Do not hide floating window here, letting it persist if enabled and shown
     }
 
     override fun onStop() {

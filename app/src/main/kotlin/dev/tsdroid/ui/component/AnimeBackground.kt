@@ -1,5 +1,9 @@
 package dev.tsdroid.ui.component
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,21 +14,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageResult
+import coil.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
 object AnimeWallpaperState {
     val currentUrl = mutableStateOf<String?>(null)
+    val fallbackBitmap = mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    val dominantColor = mutableStateOf<Color?>(null)
     private var fetched = false
 
-    suspend fun ensureFetched() {
+    suspend fun ensureFetched(context: Context) {
         if (fetched) return
         fetched = true
+        WallpaperCacheManager.init(context)
         withContext(Dispatchers.IO) {
+            var networkSuccess = false
             try {
                 val url = URL("https://www.loliapi.com/acg/pe/")
                 val conn = url.openConnection() as HttpURLConnection
@@ -35,10 +49,67 @@ object AnimeWallpaperState {
                 val finalUrl = if (!redirect.isNullOrBlank()) redirect else conn.url.toString()
                 conn.disconnect()
                 currentUrl.value = finalUrl
+
+                val imgConn = URL(finalUrl).openConnection() as HttpURLConnection
+                imgConn.connectTimeout = 8000
+                imgConn.readTimeout = 8000
+                val stream = imgConn.inputStream
+                val bitmap = BitmapFactory.decodeStream(stream)
+                imgConn.disconnect()
+                if (bitmap != null) {
+                    extractColorFromBitmap(bitmap)
+                    WallpaperCacheManager.saveToCache(context, finalUrl)
+                    networkSuccess = true
+                }
             } catch (_: Exception) {
-                fetched = false
+            }
+
+            if (!networkSuccess) {
+                val cached = WallpaperCacheManager.getRandomCachedFile()
+                if (cached != null) {
+                    val bm = BitmapFactory.decodeFile(cached.absolutePath)
+                    if (bm != null) {
+                        val urlFromName = cached.nameWithoutExtension
+                        currentUrl.value = "file://${cached.absolutePath}"
+                        extractColorFromBitmap(bm)
+                    }
+                }
             }
         }
+    }
+
+    private fun extractColorFromBitmap(bitmap: Bitmap) {
+        val mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true) ?: return
+        val scaled = Bitmap.createScaledBitmap(mutable, 48, 48, true)
+        var r = 0; var g = 0; var b = 0; var count = 0
+        for (x in 0 until scaled.width) {
+            for (y in 0 until scaled.height) {
+                val pixel = scaled.getPixel(x, y)
+                if (android.graphics.Color.alpha(pixel) > 128) {
+                    r += android.graphics.Color.red(pixel)
+                    g += android.graphics.Color.green(pixel)
+                    b += android.graphics.Color.blue(pixel)
+                    count++
+                }
+            }
+        }
+        if (count > 0) {
+            dominantColor.value = Color(
+                red = (r.toFloat() / count / 255f).coerceIn(0f, 1f),
+                green = (g.toFloat() / count / 255f).coerceIn(0f, 1f),
+                blue = (b.toFloat() / count / 255f).coerceIn(0f, 1f),
+            )
+        }
+    }
+
+    fun extractDominantColor(result: ImageResult) {
+        if (result !is SuccessResult) return
+        val drawable = result.drawable
+        val bitmap = when (drawable) {
+            is BitmapDrawable -> drawable.bitmap
+            else -> return
+        }
+        extractColorFromBitmap(bitmap)
     }
 }
 
@@ -46,8 +117,10 @@ object AnimeWallpaperState {
 fun AnimeBackground(enabled: Boolean) {
     if (!enabled) return
 
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
-        AnimeWallpaperState.ensureFetched()
+        AnimeWallpaperState.ensureFetched(context)
     }
 
     val url = AnimeWallpaperState.currentUrl.value
@@ -72,7 +145,10 @@ fun AnimeBackground(enabled: Boolean) {
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(imageAlpha),
-                onSuccess = { imageLoaded = true },
+                onSuccess = { state ->
+                    imageLoaded = true
+                    AnimeWallpaperState.extractDominantColor(state.result)
+                },
             )
         }
 

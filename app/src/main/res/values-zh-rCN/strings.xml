@@ -55,6 +55,17 @@
     <string name="unmute_mic">取消静音</string>
     <string name="tab_channel">频道</string>
     <string name="tab_private">私信</string>
+    <string name="tab_home">主页</string>
+    <string name="tab_settings">设置</string>
+    <string name="no_connection">暂无连接</string>
+    <string name="wallpaper_cache_size">壁纸缓存：%1$s MB（%2$d 张）</string>
+    <string name="wallpaper_max_cache">最大缓存：%1$d MB</string>
+    <string name="wallpaper_view_cache">查看壁纸缓存</string>
+    <string name="wallpaper_cache_images">张壁纸</string>
+    <string name="wallpaper_clear_cache">清空壁纸缓存</string>
+    <string name="wallpaper_clear_cache_confirm">确定要清空所有壁纸缓存吗？此操作不可恢复。</string>
+    <string name="wallpaper_cache_empty">暂无缓存壁纸</string>
+    <string name="confirm">确定</string>
     <string name="close">关闭</string>
     <string name="filter_all">全部</string>
     <string name="message_channel_placeholder">频道消息…</string>

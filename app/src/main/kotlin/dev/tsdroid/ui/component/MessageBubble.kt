@@ -125,9 +125,9 @@ fun MessageBubble(
             ),
         colors = CardDefaults.cardColors(
             containerColor = if (isMe)
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
             else
-                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
         ),
     ) {
         Column(

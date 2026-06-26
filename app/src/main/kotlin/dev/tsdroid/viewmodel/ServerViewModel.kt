@@ -87,6 +87,11 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     // In-memory cache: avoids re-reading from disk + re-decoding for the same image
     private val downloadCache = mutableMapOf<String, StateFlow<DownloadState>>()
 
+    private val _previewImageBytes = MutableStateFlow<ByteArray?>(null)
+    val previewImageBytes: StateFlow<ByteArray?> = _previewImageBytes.asStateFlow()
+    private val _previewImageName = MutableStateFlow<String?>(null)
+    val previewImageName: StateFlow<String?> = _previewImageName.asStateFlow()
+
     private var tsClient: TsClient? = null
     private var audioBridge: AudioBridge? = null
     private var connectionService: TsConnectionService? = null
@@ -919,7 +924,6 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 if (cached == null) {
                     fileCache.put(host, cachePath, bytes)
                 }
-                // Save to Downloads + open the file
                 val dlUri = saveToDownloads(fileName, bytes)
                 if (dlUri != null) {
                     withContext(Dispatchers.Main) {
@@ -928,6 +932,32 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    fun previewImageFile(fileName: String) {
+        val client = tsClient ?: return
+        val channelId = currentChannelId()
+        val currentPath = _currentFilePath.value
+        val fullName = currentPath.trimStart('/') + fileName
+        val host = serverAddress?.substringBefore(':') ?: "unknown"
+        val cachePath = fullName.trimStart('/')
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val cached = fileCache.get(host, cachePath)
+            val bytes = cached ?: client.downloadFile(channelId, "/$fullName")
+            if (bytes != null) {
+                if (cached == null) {
+                    fileCache.put(host, cachePath, bytes)
+                }
+                _previewImageBytes.value = bytes
+                _previewImageName.value = fileName
+            }
+        }
+    }
+
+    fun closePreview() {
+        _previewImageBytes.value = null
+        _previewImageName.value = null
     }
 
     private fun openFileUri(uri: android.net.Uri, fileName: String) {

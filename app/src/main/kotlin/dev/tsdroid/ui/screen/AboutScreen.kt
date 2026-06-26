@@ -13,14 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import dev.tsdroid.data.SettingsStore
 import dev.tsdroid.han.R
@@ -86,64 +83,64 @@ fun AboutScreen(onBack: () -> Unit) {
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().statusBarsPadding()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
             ) {
                 Text(
                     text = stringResource(R.string.about_back),
-                    color = Color(0xFF1976D2),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.clickable { onBack() }.padding(8.dp)
                 )
                 Spacer(modifier = Modifier.width(24.dp))
                 Text(
                     text = stringResource(R.string.about_software),
-                    style = MaterialTheme.typography.titleLarge.copy(color = Color(0xFF121212), fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.headlineSmall,
                 )
             }
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Text(text = stringResource(R.string.about_credits_title), fontWeight = FontWeight.Bold, color = Color(0xFF121212), fontSize = 16.sp)
+            Text(text = stringResource(R.string.about_credits_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.about_credits_desc),
-                color = Color(0x8A000000), fontSize = 14.sp, lineHeight = 22.sp
+                style = MaterialTheme.typography.bodyMedium,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(text = stringResource(R.string.about_enhancement_title), fontWeight = FontWeight.Bold, color = Color(0xFF121212), fontSize = 16.sp)
+            Text(text = stringResource(R.string.about_enhancement_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.about_enhancement_desc),
-                color = Color(0x8A000000), fontSize = 14.sp, lineHeight = 22.sp
+                style = MaterialTheme.typography.bodyMedium,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(text = stringResource(R.string.about_license_title), fontWeight = FontWeight.Bold, color = Color(0xFF121212), fontSize = 16.sp)
+            Text(text = stringResource(R.string.about_license_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.about_license_desc),
-                color = Color(0x8A000000), fontSize = 14.sp, lineHeight = 22.sp
+                style = MaterialTheme.typography.bodyMedium,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(text = stringResource(R.string.about_repo_title), fontWeight = FontWeight.Bold, color = Color(0xFF121212), fontSize = 16.sp)
+            Text(text = stringResource(R.string.about_repo_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.about_repo_desc),
-                color = Color(0x8A000000), fontSize = 14.sp, lineHeight = 22.sp
+                style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = stringResource(R.string.about_repo_link),
-                color = Color(0xFF1976D2),
-                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
                 textDecoration = TextDecoration.Underline,
-                fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repoUrl))
@@ -154,10 +151,10 @@ fun AboutScreen(onBack: () -> Unit) {
             )
 
             Spacer(modifier = Modifier.height(28.dp))
-            HorizontalDivider(color = Color(0x1A000000), thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             Spacer(modifier = Modifier.height(28.dp))
 
-            Text(text = stringResource(R.string.about_contributors_title), fontWeight = FontWeight.Bold, color = Color(0xFF121212), fontSize = 16.sp)
+            Text(text = stringResource(R.string.about_contributors_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(12.dp))
 
             if (isLoadingContributors) {
@@ -167,7 +164,7 @@ fun AboutScreen(onBack: () -> Unit) {
             } else if (contributors.isEmpty()) {
                 Text(
                     text = stringResource(R.string.contributors_load_error),
-                    color = Color(0x8A000000), fontSize = 14.sp
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
                 contributors.forEach { contributor ->
@@ -184,20 +181,17 @@ fun AboutScreen(onBack: () -> Unit) {
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFE0E0E0))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = contributor.login,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF121212),
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.bodyLarge,
                             )
                             Text(
                                 text = stringResource(R.string.about_contributions_count, contributor.contributions),
-                                color = Color(0x8A000000),
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     }
@@ -205,27 +199,25 @@ fun AboutScreen(onBack: () -> Unit) {
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            HorizontalDivider(color = Color(0x1A000000), thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             Spacer(modifier = Modifier.height(28.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0x0AFF5252)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
                         text = stringResource(R.string.about_warning_title),
-                        color = Color(0xFFD32F2F),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = stringResource(R.string.about_warning_desc),
-                        color = Color(0xFFE57373),
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }

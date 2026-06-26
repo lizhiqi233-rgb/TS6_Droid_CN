@@ -87,6 +87,7 @@ fun FileManagerDialog(
     onUploadFile: (String, ByteArray) -> Unit,
     onShareFile: (ShareTarget, String, Long) -> Unit,
     onDismiss: () -> Unit,
+    onPreviewImage: (String) -> Unit = {},
 ) {
     // Permission flags — write operations require explicit permission bits.
     // When permissionHints == 0 (server didn't send hints), hide write buttons.
@@ -204,6 +205,7 @@ fun FileManagerDialog(
                                         canDelete = canDelete,
                                         onFolderClick = { onNavigateToFolder(entry.name) },
                                         onDownload = { onDownload(entry.name) },
+                                        onPreviewImage = { onPreviewImage(entry.name) },
                                         onShare = { shareTarget = entry.name to entry.size },
                                         onRename = { renameTarget = entry.name },
                                         onDelete = { deleteTarget = entry.name },
@@ -360,6 +362,7 @@ private fun FileEntryRow(
     canDelete: Boolean = true,
     onFolderClick: () -> Unit,
     onDownload: () -> Unit,
+    onPreviewImage: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -371,6 +374,7 @@ private fun FileEntryRow(
             .fillMaxWidth()
             .clickable {
                 if (!entry.isFile) onFolderClick()
+                else if (isImageFile(entry.name)) onPreviewImage()
                 else if (canDownload) onDownload()
             }
             .padding(horizontal = 16.dp, vertical = 10.dp),

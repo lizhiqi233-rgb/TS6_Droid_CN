@@ -34,7 +34,7 @@ class SettingsStore(private val context: Context) {
         .map { it[KEY_LANGUAGE] ?: "zh" }
 
     val enableFloatingWindow: Flow<Boolean> = context.settingsDataStore.data
-        .map { it[KEY_ENABLE_FLOATING_WINDOW] ?: false }
+        .map { it[KEY_ENABLE_FLOATING_WINDOW] ?: true }
 
     val animeBackground: Flow<Boolean> = context.settingsDataStore.data
         .map { it[KEY_ANIME_BACKGROUND] ?: true }
