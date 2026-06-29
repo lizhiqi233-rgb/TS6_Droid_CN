@@ -19,17 +19,21 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("${rootDir}/release.keystore")
-            storePassword = "ts6droid"
-            keyAlias = "ts6droid"
-            keyPassword = "ts6droid"
+        if (file("${rootDir}/release.keystore").exists()) {
+            create("release") {
+                storeFile = file("${rootDir}/release.keystore")
+                storePassword = "ts6droid"
+                keyAlias = "ts6droid"
+                keyPassword = "ts6droid"
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            if (signingConfigs.names.contains("release")) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         release {
             isMinifyEnabled = false
@@ -37,7 +41,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (signingConfigs.names.contains("release")) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
